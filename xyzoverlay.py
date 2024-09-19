@@ -14,6 +14,7 @@ from cycler import cycler                                       #generate color 
 from itertools import cycle                                     #for color cycling
 import io                                                       #IO for (easy) saving multi xyz
 import re                                                       #regex (get atom x y z from multi xyz)
+import matplotlib.colors as mcolors                             #to add the colorbar
 
 #var for check if xyz is multi xyz
 is_trj = 0
@@ -151,6 +152,11 @@ parser.add_argument('-cm','--cmap',
     type= str,
     help='use Matplotlib colormap in view mode')
 
+#add color bar
+parser.add_argument('-cb', '--cbar',
+    type= bool, default=False,
+    help='in case of using Matplotlib colormap, add a colorbar as well')
+
 #add +x% to radius (for view mode)
 parser.add_argument('-r','--radius',
     default=8,
@@ -178,6 +184,8 @@ parser.add_argument('-s','--save',
 parser.add_argument('-st','--savetr',
     default=0, action='store_true',
     help='save superimposed / aligned data as (multi) xyz or xyz trajectory file')
+
+
 
 #parse arguments
 args = parser.parse_args()
@@ -401,6 +409,7 @@ if args.viewcbm:
         try:
             new_colors = [plt.get_cmap(args.cmap)(1. * i/num_of_xyz) for i in range(num_of_xyz)]
             color_cycle = cycler('color',new_colors)
+            num_xyz = len(xyz_df_list)
         except ValueError:
             print('Warning! Not a valid Matplotlib colormap. Applying default colormap instead.')
     
@@ -432,7 +441,7 @@ if args.viewcbm:
     #generate list of data frames of bonding atoms 
     for bond_mat in bond_mat_list:
         bond_mat.values[np.triu_indices_from(bond_mat, k=1)] = np.nan
-        pd.set_option("future.no_silent_downcasting", True)
+        #pd.set_option("future.no_silent_downcasting", True)
         bond_mat = bond_mat.replace(0, np.nan)
         bond_mat = bond_mat.unstack().dropna()
         bond_mat = bond_mat.reset_index(level=1)
@@ -451,14 +460,28 @@ if args.viewcbm:
         
         #scatter (atom) plot
         ax.scatter(*xyz_df[['x','y','z']].to_numpy().T,s=np.log10(atom_scaler/num_atom_xyz),alpha=alpha_atoms,**style)
-
         #bonds
         for bonds in atom1_2_coord:
             ax.plot(*bonds.T,linewidth=np.log10(bond_scaler/num_atom_xyz),alpha=alpha_bonds,**style)
+    
     #no axes
     ax.set_axis_off()
-    #tight layout 
+
+    #add color bar to account for the number of cartesian coordinates
+    if args.cbar:
+      norm = mcolors.Normalize(vmin=0, vmax=num_xyz)
+      cmap = plt.get_cmap(args.cmap)
+      # Create a ScalarMappable object to generate the colorbar
+      sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+      sm.set_array([])  # N
+      cbar = fig.colorbar(sm, ax=ax, shrink=0.6)
+      cbar.set_label('Number of Cartesian Coordinates', fontsize=14, labelpad=20)
+      cbar.ax.tick_params(labelsize=12)
+
+    #tight layout
     fig.tight_layout()
+
+    # Generate data
     #adjust 3d drawing behavior, otherwise molecules are not correctly displayes
     set_axes_equal(ax)
     #show the plot
@@ -622,7 +645,7 @@ if args.viewcba:
         #bonds
         for bonds in atom1_2_coord:
             ax.plot(*bonds.T,linewidth=np.log10(bond_scaler/num_atom_xyz),alpha=alpha_bonds,color='gray')
-    
+    print("HI")
     #no axes
     ax.set_axis_off()
     #tight layout 
