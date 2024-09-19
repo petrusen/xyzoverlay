@@ -645,7 +645,6 @@ if args.viewcba:
         #bonds
         for bonds in atom1_2_coord:
             ax.plot(*bonds.T,linewidth=np.log10(bond_scaler/num_atom_xyz),alpha=alpha_bonds,color='gray')
-    print("HI")
     #no axes
     ax.set_axis_off()
     #tight layout 
